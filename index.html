@@ -1,39 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>BLE Scanner</title>
+  <title>Nearby Bluetooth Table Finder</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+    button { padding: 10px 20px; font-size: 18px; }
+    ul { list-style-type: none; padding: 0; }
+  </style>
 </head>
 <body>
-  <h1>BLE Scanner</h1>
-  <button id="start">Start Scan</button>
-  <ul id="results"></ul>
+  <h1>🔍 Find Nearby Table Devices</h1>
+  <button onclick="startScan()">Scan for Devices</button>
+  <ul id="deviceList"></ul>
 
   <script>
-    let scan;
-    const seenDevices = {};
+    async function startScan() {
+      const deviceList = document.getElementById("deviceList");
+      deviceList.innerHTML = "<li>🔄 Scanning...</li>";
 
-    document.getElementById('start').addEventListener('click', async () => {
       try {
-        scan = await navigator.bluetooth.requestLEScan({
-          acceptAllAdvertisements: true,
-          keepRepeatedDevices: true
-        });
+        const options = {
+          acceptAllDevices: true,
+          optionalServices: ['battery_service']
+        };
 
-        navigator.bluetooth.addEventListener('advertisementreceived', event => {
-          const name = event.device.name || 'Unnamed';
-          const id = event.device.id;
-          if (!seenDevices[id]) {
-            seenDevices[id] = true;
-            const li = document.createElement('li');
-            li.textContent = `📡 ${name} (RSSI: ${event.rssi})`;
-            document.getElementById('results').appendChild(li);
-          }
-        });
+        const device = await navigator.bluetooth.requestDevice(options);
 
+        // Filter for names like "Table 1", "Table 2"
+        if (device.name && device.name.toLowerCase().includes("table")) {
+          deviceList.innerHTML = `<li>✅ Found: ${device.name}</li>`;
+        } else {
+          deviceList.innerHTML = `<li>❌ Not a table device: ${device.name || "Unnamed"}</li>`;
+        }
       } catch (error) {
-        alert("❌ Error: " + error);
+        deviceList.innerHTML = `<li>❌ Error: ${error.message}</li>`;
       }
-    });
+    }
   </script>
 </body>
 </html>
