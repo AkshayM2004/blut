@@ -1,64 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>BLE Table Scanner</title>
-  <style>
-    body { font-family: Arial; text-align: center; padding-top: 40px; background: #f0f8ff; }
-    button { font-size: 18px; padding: 10px 20px; margin-bottom: 20px; }
-    ul { list-style-type: none; padding: 0; font-size: 18px; }
-    li { margin: 6px 0; }
-  </style>
+  <title>BLE Scanner</title>
 </head>
 <body>
-  <h1>📡 BLE Table Scanner</h1>
-  <button onclick="startScan()">🔄 Scan for Devices</button>
-  <ul id="deviceList">No devices scanned yet.</ul>
+  <h1>BLE Scanner</h1>
+  <button id="start">Start Scan</button>
+  <ul id="results"></ul>
 
   <script>
-    let scanner;
-    let seenIds = {};
+    let scan;
+    const seenDevices = {};
 
-    async function startScan() {
-      // Clear previous results
-      const deviceList = document.getElementById("deviceList");
-      deviceList.innerHTML = '';
-      seenIds = {};
-
+    document.getElementById('start').addEventListener('click', async () => {
       try {
-        if (scanner && scanner.active) {
-          scanner.stop(); // stop previous scan if running
-        }
-
-        scanner = await navigator.bluetooth.requestLEScan({
+        scan = await navigator.bluetooth.requestLEScan({
           acceptAllAdvertisements: true,
-          keepRepeatedDevices: false
+          keepRepeatedDevices: true
         });
 
         navigator.bluetooth.addEventListener('advertisementreceived', event => {
-          const name = event.device.name || '';
+          const name = event.device.name || 'Unnamed';
           const id = event.device.id;
-
-          if (name.toLowerCase().includes('table') && !seenIds[id]) {
-            seenIds[id] = true;
+          if (!seenDevices[id]) {
+            seenDevices[id] = true;
             const li = document.createElement('li');
-            li.textContent = `✅ ${name} (RSSI: ${event.rssi})`;
-            deviceList.appendChild(li);
+            li.textContent = `📡 ${name} (RSSI: ${event.rssi})`;
+            document.getElementById('results').appendChild(li);
           }
         });
 
-        // Auto-stop scan after 10 seconds
-        setTimeout(() => {
-          if (scanner.active) scanner.stop();
-          const done = document.createElement('li');
-          done.textContent = '✅ Scan complete.';
-          deviceList.appendChild(done);
-        }, 10000);
-
-      } catch (err) {
-        deviceList.innerHTML = `<li>❌ Error: ${err.message}</li>`;
+      } catch (error) {
+        alert("❌ Error: " + error);
       }
-    }
+    });
   </script>
 </body>
 </html>
