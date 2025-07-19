@@ -1,39 +1,77 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Nearby Bluetooth Table Finder</title>
+  <title>Nearest Table Bluetooth Finder</title>
   <style>
-    body { font-family: sans-serif; text-align: center; margin-top: 50px; }
-    button { padding: 10px 20px; font-size: 18px; }
-    ul { list-style-type: none; padding: 0; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding-top: 40px;
+      background: #eef6ff;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+    #result {
+      font-size: 20px;
+      color: #333;
+    }
   </style>
 </head>
 <body>
-  <h1>🔍 Find Nearby Table Devices</h1>
-  <button onclick="startScan()">Scan for Devices</button>
-  <ul id="deviceList"></ul>
+  <h1>📡 Nearest Table Device</h1>
+  <button onclick="startScan()">🔄 Scan</button>
+  <div id="result">No scan yet.</div>
 
   <script>
+    let scan;
+    let highestRSSI = -Infinity;
+    let nearestDevice = null;
+
     async function startScan() {
-      const deviceList = document.getElementById("deviceList");
-      deviceList.innerHTML = "<li>🔄 Scanning...</li>";
+      const resultEl = document.getElementById("result");
+      resultEl.innerText = "🔍 Scanning...";
+
+      highestRSSI = -Infinity;
+      nearestDevice = null;
 
       try {
-        const options = {
-          acceptAllDevices: true,
-          optionalServices: ['battery_service']
-        };
-
-        const device = await navigator.bluetooth.requestDevice(options);
-
-        // Filter for names like "Table 1", "Table 2"
-        if (device.name && device.name.toLowerCase().includes("table")) {
-          deviceList.innerHTML = `<li>✅ Found: ${device.name}</li>`;
-        } else {
-          deviceList.innerHTML = `<li>❌ Not a table device: ${device.name || "Unnamed"}</li>`;
+        if (scan && scan.active) {
+          scan.stop();
         }
-      } catch (error) {
-        deviceList.innerHTML = `<li>❌ Error: ${error.message}</li>`;
+
+        scan = await navigator.bluetooth.requestLEScan({
+          acceptAllAdvertisements: true,
+          keepRepeatedDevices: true
+        });
+
+        navigator.bluetooth.removeEventListener('advertisementreceived', handleAd); // avoid multiple
+        navigator.bluetooth.addEventListener('advertisementreceived', handleAd);
+
+        // Stop scan after 10 seconds
+        setTimeout(() => {
+          if (scan.active) scan.stop();
+          if (nearestDevice) {
+            resultEl.innerText = `✅ Nearest Table Device: ${nearestDevice.name} (RSSI: ${highestRSSI})`;
+          } else {
+            resultEl.innerText = "❌ No Table devices found nearby.";
+          }
+        }, 10000);
+
+      } catch (err) {
+        resultEl.innerText = `❌ Error: ${err.message}`;
+      }
+    }
+
+    function handleAd(event) {
+      const name = event.device.name || '';
+      if (name.toLowerCase().includes("table")) {
+        if (event.rssi > highestRSSI) {
+          highestRSSI = event.rssi;
+          nearestDevice = event.device;
+        }
       }
     }
   </script>
