@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Nearest Bluetooth Detector</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 100px;
+      background: #f0f8ff;
+    }
+    button {
+      font-size: 18px;
+      padding: 10px 20px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+    #output {
+      font-size: 20px;
+      margin-top: 30px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🔍 Nearest Bluetooth Device Finder</h1>
+  <button onclick="findNearestBluetooth()">Scan Bluetooth</button>
+  <div id="output">Click scan to detect nearest BLE device</div>
+
+  <script>
+    async function findNearestBluetooth() {
+      try {
+        const device = await navigator.bluetooth.requestLEScan({
+          acceptAllAdvertisements: true,
+          keepRepeatedDevices: true
+        });
+
+        const output = document.getElementById("output");
+        let nearestDevice = null;
+        let strongestRSSI = -Infinity;
+
+        navigator.bluetooth.addEventListener('advertisementreceived', event => {
+          if (!event.device.name) return; // skip unnamed devices
+
+          if (event.rssi > strongestRSSI) {
+            strongestRSSI = event.rssi;
+            nearestDevice = event.device.name;
+            output.innerText = `📡 Nearest Device: ${nearestDevice} (RSSI: ${event.rssi})`;
+          }
+        });
+
+        output.innerText = "🔎 Scanning for nearby devices...";
+
+        // Stop scanning after 10 seconds
+        setTimeout(() => {
+          device.stop();
+          output.innerText += "\n✅ Scan finished";
+        }, 10000);
+
+      } catch (error) {
+        document.getElementById("output").innerText = "❌ Error: " + error;
+        console.error(error);
+      }
+    }
+  </script>
+</body>
+</html>
