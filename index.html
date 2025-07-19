@@ -2,66 +2,61 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Nearest Bluetooth Detector</title>
+  <title>BLE Table Scanner</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin-top: 100px;
-      background: #f0f8ff;
-    }
-    button {
-      font-size: 18px;
-      padding: 10px 20px;
-      margin-top: 20px;
-      cursor: pointer;
-    }
-    #output {
-      font-size: 20px;
-      margin-top: 30px;
-      color: #333;
-    }
+    body { font-family: Arial; text-align: center; padding-top: 40px; background: #f0f8ff; }
+    button { font-size: 18px; padding: 10px 20px; margin-bottom: 20px; }
+    ul { list-style-type: none; padding: 0; font-size: 18px; }
+    li { margin: 6px 0; }
   </style>
 </head>
 <body>
-
-  <h1>🔍 Nearest Bluetooth Device Finder</h1>
-  <button onclick="findNearestBluetooth()">Scan Bluetooth</button>
-  <div id="output">Click scan to detect nearest BLE device</div>
+  <h1>📡 BLE Table Scanner</h1>
+  <button onclick="startScan()">🔄 Scan for Devices</button>
+  <ul id="deviceList">No devices scanned yet.</ul>
 
   <script>
-    async function findNearestBluetooth() {
+    let scanner;
+    let seenIds = {};
+
+    async function startScan() {
+      // Clear previous results
+      const deviceList = document.getElementById("deviceList");
+      deviceList.innerHTML = '';
+      seenIds = {};
+
       try {
-        const device = await navigator.bluetooth.requestLEScan({
+        if (scanner && scanner.active) {
+          scanner.stop(); // stop previous scan if running
+        }
+
+        scanner = await navigator.bluetooth.requestLEScan({
           acceptAllAdvertisements: true,
-          keepRepeatedDevices: true
+          keepRepeatedDevices: false
         });
 
-        const output = document.getElementById("output");
-        let nearestDevice = null;
-        let strongestRSSI = -Infinity;
-
         navigator.bluetooth.addEventListener('advertisementreceived', event => {
-          if (!event.device.name) return; // skip unnamed devices
+          const name = event.device.name || '';
+          const id = event.device.id;
 
-          if (event.rssi > strongestRSSI) {
-            strongestRSSI = event.rssi;
-            nearestDevice = event.device.name;
-            output.innerText = `📡 Nearest Device: ${nearestDevice} (RSSI: ${event.rssi})`;
+          if (name.toLowerCase().includes('table') && !seenIds[id]) {
+            seenIds[id] = true;
+            const li = document.createElement('li');
+            li.textContent = `✅ ${name} (RSSI: ${event.rssi})`;
+            deviceList.appendChild(li);
           }
         });
 
-        output.innerText = "🔎 Scanning for nearby devices...";
-
-        // Stop scanning after 10 seconds
+        // Auto-stop scan after 10 seconds
         setTimeout(() => {
-          device.stop();
-          output.innerText += "\n✅ Scan finished";
+          if (scanner.active) scanner.stop();
+          const done = document.createElement('li');
+          done.textContent = '✅ Scan complete.';
+          deviceList.appendChild(done);
         }, 10000);
 
-      } catch (error) {
-        document.getElementById("output").innerText = "❌ Error: " + error;
-        console.error(error);
+      } catch (err) {
+        deviceList.innerHTML = `<li>❌ Error: ${err.message}</li>`;
       }
     }
   </script>
